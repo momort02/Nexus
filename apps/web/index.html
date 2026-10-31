@@ -1,0 +1,991 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Analysez les statistiques observées de vos serveurs Discord avec Nexus."
+    />
+    <title>Nexus — Gestion du serveur</title>
+    <link rel="icon" type="image/svg+xml" href="/src/logo-mark.svg" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <script type="module" src="/src/main.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navigation principale">
+        <a class="brand" href="/" aria-label="Nexus, accueil">
+          <img src="/src/logo-mark.svg" alt="" width="40" height="40" />
+          <span>Nexus</span>
+        </a>
+        <p class="sidebar-label">Espace serveur</p>
+        <label class="sr-only" for="guild-selector">Serveur Discord</label>
+        <select id="guild-selector" disabled>
+          <option value="">Chargement des serveurs…</option>
+        </select>
+        <nav class="side-nav">
+          <a class="nav-link" href="#dashboard" data-view="dashboard"
+            ><span aria-hidden="true">⌂</span>Tableau de bord</a
+          >
+          <a
+            class="nav-link active"
+            href="#analytics"
+            data-view="analytics"
+            aria-current="page"
+            ><span aria-hidden="true">◷</span>Analytics</a
+          >
+          <a class="nav-link" href="#members" data-view="members"
+            ><span aria-hidden="true">♧</span>Membres</a
+          >
+          <a class="nav-link" href="#staff" data-view="staff"
+            ><span aria-hidden="true">♙</span>Staff</a
+          >
+          <a class="nav-link" href="#tasks" data-view="tasks"
+            ><span aria-hidden="true">✓</span>Tâches</a
+          >
+          <a class="nav-link" href="#reports" data-view="reports"
+            ><span aria-hidden="true">⚑</span>Signalements</a
+          >
+          <a class="nav-link" href="#applications" data-view="applications"
+            ><span aria-hidden="true">▤</span>Candidatures</a
+          >
+          <a class="nav-link" href="#moderation" data-view="moderation"
+            ><span aria-hidden="true">◈</span>Modération</a
+          >
+          <a class="nav-link" href="#audit" data-view="audit"
+            ><span aria-hidden="true">≡</span>Audit</a
+          >
+          <a class="nav-link" href="#notifications" data-view="notifications"
+            ><span aria-hidden="true">♧</span>Notifications</a
+          >
+          <a class="nav-link" href="#settings" data-view="settings"
+            ><span aria-hidden="true">⚙</span>Paramètres</a
+          >
+        </nav>
+        <div class="sidebar-note">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span
+            >Les données privées et les actions sensibles sont protégées côté
+            serveur.</span
+          >
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <p id="page-eyebrow" class="eyebrow">Vue d’ensemble</p>
+            <h1 id="page-title">Analytics</h1>
+          </div>
+          <button
+            id="logout-button"
+            class="button button-quiet"
+            type="button"
+            hidden
+          >
+            Se déconnecter
+          </button>
+          <p
+            id="realtime-status"
+            class="realtime-status"
+            role="status"
+            hidden
+          ></p>
+        </header>
+
+        <section id="signed-out" class="panel welcome-panel" hidden>
+          <p class="eyebrow">Bienvenue sur Nexus</p>
+          <h2>Des statistiques utiles, sans contenu de messages.</h2>
+          <p>
+            Connectez votre compte Discord pour consulter les données des
+            serveurs auxquels vous avez accès.
+          </p>
+          <a class="button button-primary" href="/api/v1/auth/discord">
+            Continuer avec Discord
+          </a>
+        </section>
+
+        <section id="no-guilds" class="panel empty-panel" hidden>
+          <h2>Aucun serveur Nexus accessible</h2>
+          <p>
+            Choisissez un serveur Discord où vous êtes propriétaire ou disposez
+            de la permission « Gérer le serveur ».
+          </p>
+          <form id="available-guild-form" class="available-guild-form">
+            <label for="available-guild-selector">Serveur Discord</label>
+            <select id="available-guild-selector" required>
+              <option value="">Chargement des serveurs…</option>
+            </select>
+            <button class="button button-primary" type="submit">
+              Créer mon espace Nexus
+            </button>
+          </form>
+        </section>
+
+        <div id="dashboard" hidden>
+          <section id="dashboard-view" class="workspace-view" hidden>
+            <div class="section-intro">
+              <p class="eyebrow">Vue d’ensemble</p>
+              <h2>
+                Bienvenue sur
+                <span id="dashboard-guild-name">votre serveur</span>
+              </h2>
+              <p>
+                Indicateurs observés sur les sept derniers jours. Les périodes
+                sans collecte ne sont pas estimées.
+              </p>
+            </div>
+            <p
+              class="module-status"
+              data-status-for="dashboard"
+              role="status"
+              aria-live="polite"
+              hidden
+            ></p>
+            <section
+              class="metric-grid"
+              aria-label="Résumé du serveur sur sept jours"
+            >
+              <article class="metric-card">
+                <p>Messages observés</p>
+                <strong id="dashboard-messages">—</strong>
+              </article>
+              <article class="metric-card">
+                <p>Arrivées</p>
+                <strong id="dashboard-joins">—</strong>
+              </article>
+              <article class="metric-card">
+                <p>Départs</p>
+                <strong id="dashboard-leaves">—</strong>
+              </article>
+              <article class="metric-card">
+                <p>Membres actifs (DAU)</p>
+                <strong id="dashboard-active">—</strong>
+              </article>
+            </section>
+            <div class="panel module-list-panel">
+              <h3>Accès rapides</h3>
+              <nav class="quick-links" aria-label="Accès rapides">
+                <a
+                  class="button button-secondary"
+                  href="#analytics"
+                  data-view="analytics"
+                  >Consulter les analytics</a
+                >
+                <a
+                  class="button button-secondary"
+                  href="#members"
+                  data-view="members"
+                  >Rechercher un membre</a
+                >
+                <a
+                  class="button button-secondary"
+                  href="#tasks"
+                  data-view="tasks"
+                  >Voir les tâches</a
+                >
+                <a
+                  class="button button-secondary"
+                  href="#moderation"
+                  data-view="moderation"
+                  >Ouvrir la modération</a
+                >
+              </nav>
+            </div>
+          </section>
+
+          <section id="analytics-view" class="workspace-view">
+            <section class="panel filters-panel" aria-label="Filtres Analytics">
+              <form id="filters-form" class="filters">
+                <label>
+                  <span>Du</span>
+                  <input id="date-from" name="from" type="date" required />
+                </label>
+                <label>
+                  <span>Au</span>
+                  <input id="date-to" name="to" type="date" required />
+                </label>
+                <label class="comparison-toggle">
+                  <input id="compare-toggle" type="checkbox" />
+                  <span>Comparer à la période précédente</span>
+                </label>
+                <button class="button button-primary" type="submit">
+                  Appliquer
+                </button>
+                <button
+                  id="export-button"
+                  class="button button-secondary"
+                  type="button"
+                >
+                  Exporter CSV
+                </button>
+              </form>
+              <div class="timezone-row">
+                <p id="timezone-label" class="muted">Fuseau : UTC</p>
+                <form id="timezone-form" class="timezone-form">
+                  <label for="timezone-input">Fuseau du serveur (IANA)</label>
+                  <input
+                    id="timezone-input"
+                    name="timezone"
+                    type="text"
+                    maxlength="64"
+                    value="UTC"
+                    autocomplete="off"
+                    required
+                  />
+                  <button class="button button-quiet" type="submit">
+                    Enregistrer
+                  </button>
+                </form>
+              </div>
+            </section>
+
+            <p
+              id="status-message"
+              class="status-message"
+              role="status"
+              aria-live="polite"
+            >
+              Chargement des statistiques…
+            </p>
+            <div id="analytics-content" aria-busy="true">
+              <section class="metric-grid" aria-label="Indicateurs clés">
+                <article class="metric-card">
+                  <p>Messages observés</p>
+                  <strong id="metric-messages">—</strong>
+                  <span
+                    id="metric-messages-compare"
+                    class="metric-compare"
+                  ></span>
+                </article>
+                <article class="metric-card">
+                  <p>Arrivées</p>
+                  <strong id="metric-joins">—</strong>
+                  <span id="metric-joins-compare" class="metric-compare"></span>
+                </article>
+                <article class="metric-card">
+                  <p>Départs</p>
+                  <strong id="metric-leaves">—</strong>
+                  <span
+                    id="metric-leaves-compare"
+                    class="metric-compare"
+                  ></span>
+                </article>
+                <article class="metric-card">
+                  <p>Membres actifs (DAU / WAU / MAU)</p>
+                  <strong id="metric-dau">—</strong>
+                  <span id="metric-active-period" class="metric-compare"></span>
+                </article>
+              </section>
+
+              <section
+                class="chart-grid"
+                aria-label="Évolution des statistiques"
+              >
+                <article class="panel chart-panel">
+                  <div class="panel-heading">
+                    <div>
+                      <h2>Messages par jour</h2>
+                      <p>Compteurs agrégés — heure locale du serveur</p>
+                    </div>
+                  </div>
+                  <div class="chart-wrap">
+                    <canvas
+                      id="messages-chart"
+                      aria-label="Messages observés par jour"
+                      role="img"
+                      aria-describedby="messages-chart-description"
+                    ></canvas>
+                  </div>
+                  <p id="messages-chart-description" class="sr-only"></p>
+                </article>
+                <article class="panel chart-panel">
+                  <div class="panel-heading">
+                    <div>
+                      <h2>Activité des membres</h2>
+                      <p>
+                        DAU : membres humains distincts avec une action éligible
+                      </p>
+                    </div>
+                  </div>
+                  <div class="chart-wrap">
+                    <canvas
+                      id="members-chart"
+                      aria-label="Membres actifs et croissance par jour"
+                      role="img"
+                      aria-describedby="members-chart-description"
+                    ></canvas>
+                  </div>
+                  <p id="members-chart-description" class="sr-only"></p>
+                </article>
+              </section>
+
+              <section class="panel channels-panel">
+                <div class="panel-heading channel-heading">
+                  <div>
+                    <h2>Messages par salon</h2>
+                    <p>Résultats agrégés pour la période sélectionnée</p>
+                  </div>
+                  <form id="channel-filter-form" class="channel-filter">
+                    <label class="sr-only" for="channel-filter"
+                      >Filtrer par identifiant de salon</label
+                    >
+                    <input
+                      id="channel-filter"
+                      type="text"
+                      inputmode="numeric"
+                      pattern="[0-9]{17,20}"
+                      placeholder="ID du salon"
+                      aria-label="Filtrer par identifiant de salon"
+                    />
+                    <button class="button button-quiet" type="submit">
+                      Filtrer
+                    </button>
+                  </form>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th scope="col">Identifiant du salon</th>
+                        <th scope="col">Messages</th>
+                      </tr>
+                    </thead>
+                    <tbody id="channels-body"></tbody>
+                  </table>
+                </div>
+                <div class="pagination">
+                  <button
+                    id="previous-page"
+                    class="button button-quiet"
+                    type="button"
+                  >
+                    Précédent
+                  </button>
+                  <span id="page-status">Page 1</span>
+                  <button
+                    id="next-page"
+                    class="button button-quiet"
+                    type="button"
+                  >
+                    Suivant
+                  </button>
+                </div>
+              </section>
+
+              <p id="coverage-note" class="coverage-note">
+                Les données reflètent uniquement les événements observés par le
+                bot. Une indisponibilité du bot ou des permissions de salon
+                insuffisantes peut créer des lacunes. Aucun historique antérieur
+                n’est reconstitué.
+              </p>
+            </div>
+          </section>
+
+          <section id="members-view" class="workspace-view" hidden>
+            <div class="section-intro">
+              <p class="eyebrow">Communauté</p>
+              <h2>Membres observés</h2>
+              <p>
+                Liste issue des événements de synchronisation reçus par le bot.
+                Les noms ne sont pas disponibles dans cet instantané.
+              </p>
+            </div>
+            <p
+              class="module-status"
+              data-status-for="members"
+              role="status"
+              aria-live="polite"
+              hidden
+            ></p>
+            <section class="panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Répertoire des membres</h3>
+                  <p>Recherche par identifiant Discord et filtre par rôle.</p>
+                </div>
+                <form id="members-filter-form" class="channel-filter">
+                  <label class="sr-only" for="members-search"
+                    >Rechercher un identifiant Discord</label
+                  >
+                  <input
+                    id="members-search"
+                    name="search"
+                    type="search"
+                    maxlength="64"
+                    placeholder="ID Discord"
+                  />
+                  <label class="sr-only" for="members-role-filter"
+                    >Filtrer par ID de rôle</label
+                  >
+                  <input
+                    id="members-role-filter"
+                    name="roleId"
+                    inputmode="numeric"
+                    pattern="[0-9]{17,20}"
+                    placeholder="ID du rôle"
+                  />
+                  <button class="button button-quiet" type="submit">
+                    Filtrer
+                  </button>
+                </form>
+              </div>
+              <div class="table-wrap">
+                <table id="members-table" aria-label="Membres du serveur">
+                  <caption class="sr-only">
+                    Membres synchronisés avec Discord
+                  </caption>
+                </table>
+              </div>
+              <div class="pagination">
+                <button
+                  id="members-previous"
+                  class="button button-quiet"
+                  type="button"
+                >
+                  Précédent
+                </button>
+                <span id="members-page-status" aria-live="polite">Page 1</span>
+                <button
+                  id="members-next"
+                  class="button button-quiet"
+                  type="button"
+                >
+                  Suivant
+                </button>
+              </div>
+            </section>
+          </section>
+
+          <section id="staff-view" class="workspace-view" hidden>
+            <div class="section-intro">
+              <p class="eyebrow">Équipe & responsabilités</p>
+              <h2>Staff</h2>
+              <p>Gérez les profils et les équipes de votre serveur.</p>
+            </div>
+            <p
+              class="module-status"
+              data-status-for="staff"
+              role="status"
+              aria-live="polite"
+              hidden
+            ></p>
+            <div class="module-grid">
+              <article class="panel">
+                <h3>Ajouter ou modifier un profil staff</h3>
+                <p class="muted">
+                  Utilisez l’identifiant utilisateur Nexus, pas l’identifiant
+                  Discord.
+                </p>
+                <form id="staff-profile-form" class="stack-form">
+                  <label
+                    >ID utilisateur Nexus<input
+                      name="userId"
+                      required
+                      maxlength="128"
+                  /></label>
+                  <label
+                    >Fonction (facultatif)<input name="title" maxlength="80"
+                  /></label>
+                  <label class="inline-check"
+                    ><input name="active" type="checkbox" checked /> Profil
+                    actif</label
+                  >
+                  <button class="button button-primary" type="submit">
+                    Enregistrer le profil
+                  </button>
+                </form>
+              </article>
+              <article class="panel">
+                <h3>Créer une équipe</h3>
+                <form id="staff-team-form" class="stack-form">
+                  <label
+                    >Nom<input name="name" required maxlength="80"
+                  /></label>
+                  <label
+                    >Description<textarea
+                      name="description"
+                      rows="3"
+                      maxlength="500"
+                    ></textarea>
+                  </label>
+                  <button class="button button-primary" type="submit">
+                    Créer l’équipe
+                  </button>
+                </form>
+              </article>
+            </div>
+            <div class="module-grid">
+              <article class="panel">
+                <div class="panel-heading">
+                  <div>
+                    <h3>Profils staff</h3>
+                    <p>Membres actuellement enregistrés comme staff</p>
+                  </div>
+                  <button
+                    class="button button-quiet"
+                    data-refresh="staff"
+                    type="button"
+                  >
+                    Actualiser
+                  </button>
+                </div>
+                <div id="staff-profiles" class="record-list"></div>
+              </article>
+              <article class="panel">
+                <div class="panel-heading">
+                  <div>
+                    <h3>Équipes</h3>
+                    <p>Organisation des rôles et responsabilités</p>
+                  </div>
+                  <button
+                    class="button button-quiet"
+                    data-refresh="staff"
+                    type="button"
+                  >
+                    Actualiser
+                  </button>
+                </div>
+                <div id="staff-teams" class="record-list"></div>
+              </article>
+            </div>
+          </section>
+
+          <section id="tasks-view" class="workspace-view" hidden>
+            <div class="section-intro">
+              <p class="eyebrow">Organisation</p>
+              <h2>Tâches staff</h2>
+              <p>
+                Créez des tâches, fixez une échéance, ajoutez des commentaires
+                et suivez leur validation.
+              </p>
+            </div>
+            <p
+              class="module-status"
+              data-status-for="tasks"
+              role="status"
+              aria-live="polite"
+              hidden
+            ></p>
+            <article class="panel">
+              <h3>Nouvelle tâche</h3>
+              <form id="task-form" class="stack-form form-grid">
+                <label
+                  >Titre<input name="title" required maxlength="160"
+                /></label>
+                <label
+                  >Responsable — ID Nexus (facultatif)<input
+                    name="assigneeId"
+                    maxlength="128"
+                /></label>
+                <label class="wide-field"
+                  >Description<textarea
+                    name="description"
+                    rows="3"
+                    required
+                    maxlength="5000"
+                  ></textarea>
+                </label>
+                <label
+                  >Échéance<input name="dueAt" type="datetime-local"
+                /></label>
+                <button class="button button-primary" type="submit">
+                  Créer la tâche
+                </button>
+              </form>
+            </article>
+            <div class="panel module-list-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Suivi des tâches</h3>
+                  <p>
+                    Les statuts et commentaires sont enregistrés dans l’audit du
+                    serveur.
+                  </p>
+                </div>
+                <button
+                  class="button button-quiet"
+                  data-refresh="tasks"
+                  type="button"
+                >
+                  Actualiser
+                </button>
+              </div>
+              <div id="tasks-list" class="record-list"></div>
+            </div>
+          </section>
+
+          <section id="reports-view" class="workspace-view" hidden>
+            <div class="section-intro">
+              <p class="eyebrow">Communauté</p>
+              <h2>Signalements</h2>
+              <p>
+                Soumettez un signalement ou traitez ceux reçus. Les détails sont
+                visibles uniquement aux personnes autorisées.
+              </p>
+            </div>
+            <p
+              class="module-status"
+              data-status-for="reports"
+              role="status"
+              aria-live="polite"
+              hidden
+            ></p>
+            <article class="panel">
+              <h3>Déposer un signalement</h3>
+              <form id="report-form" class="stack-form form-grid">
+                <label
+                  >ID Discord de la personne concernée<input
+                    name="targetDiscordId"
+                    inputmode="numeric"
+                    pattern="[0-9]{17,20}"
+                    required
+                /></label>
+                <label
+                  >Catégorie<input name="category" required maxlength="80"
+                /></label>
+                <label class="wide-field"
+                  >Détails<textarea
+                    name="details"
+                    rows="4"
+                    required
+                    maxlength="5000"
+                  ></textarea>
+                </label>
+                <button class="button button-primary" type="submit">
+                  Envoyer en privé
+                </button>
+              </form>
+            </article>
+            <div class="panel module-list-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Signalements reçus</h3>
+                  <p>Accès limité par la permission reports.view.</p>
+                </div>
+                <button
+                  class="button button-quiet"
+                  data-refresh="reports"
+                  type="button"
+                >
+                  Actualiser
+                </button>
+              </div>
+              <div id="reports-list" class="record-list"></div>
+            </div>
+          </section>
+
+          <section id="applications-view" class="workspace-view" hidden>
+            <div class="section-intro">
+              <p class="eyebrow">Recrutement</p>
+              <h2>Candidatures staff</h2>
+              <p>
+                Déposez une candidature ou examinez celles du serveur. Les
+                réponses restent privées.
+              </p>
+            </div>
+            <p
+              class="module-status"
+              data-status-for="applications"
+              role="status"
+              aria-live="polite"
+              hidden
+            ></p>
+            <article class="panel">
+              <h3>Postuler dans l’équipe</h3>
+              <form id="application-form" class="stack-form form-grid">
+                <label
+                  >Motivation<textarea
+                    name="motivation"
+                    rows="3"
+                    required
+                    maxlength="2000"
+                  ></textarea>
+                </label>
+                <label
+                  >Expérience<textarea
+                    name="experience"
+                    rows="3"
+                    required
+                    maxlength="2000"
+                  ></textarea>
+                </label>
+                <label
+                  >Disponibilités<textarea
+                    name="availability"
+                    rows="3"
+                    required
+                    maxlength="2000"
+                  ></textarea>
+                </label>
+                <button class="button button-primary" type="submit">
+                  Envoyer ma candidature
+                </button>
+              </form>
+            </article>
+            <div class="panel module-list-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Candidatures reçues</h3>
+                  <p>
+                    Accès limité par applications.view et applications.review.
+                  </p>
+                </div>
+                <button
+                  class="button button-quiet"
+                  data-refresh="applications"
+                  type="button"
+                >
+                  Actualiser
+                </button>
+              </div>
+              <div id="applications-list" class="record-list"></div>
+            </div>
+          </section>
+
+          <section id="moderation-view" class="workspace-view" hidden>
+            <div class="section-intro">
+              <p class="eyebrow">Application des règles</p>
+              <h2>Modération</h2>
+              <p>
+                Les sanctions restent en attente jusqu’à la vérification des
+                permissions et de la hiérarchie par le bot.
+              </p>
+            </div>
+            <p
+              class="module-status"
+              data-status-for="moderation"
+              role="status"
+              aria-live="polite"
+              hidden
+            ></p>
+            <article class="panel">
+              <h3>Nouvelle action</h3>
+              <form id="moderation-form" class="stack-form form-grid">
+                <label
+                  >ID Discord de la cible<input
+                    name="targetDiscordId"
+                    inputmode="numeric"
+                    pattern="[0-9]{17,20}"
+                    required
+                /></label>
+                <label
+                  >Action<select name="action" required>
+                    <option value="WARN">Avertissement</option>
+                    <option value="TIMEOUT">Timeout</option>
+                    <option value="KICK">Expulsion</option>
+                    <option value="BAN">Bannissement</option>
+                  </select></label
+                >
+                <label id="timeout-duration-field" hidden
+                  >Durée (secondes)<input
+                    name="durationSeconds"
+                    type="number"
+                    min="1"
+                    max="2419200"
+                /></label>
+                <label class="wide-field"
+                  >Motif<textarea
+                    name="reason"
+                    rows="3"
+                    required
+                    maxlength="1000"
+                  ></textarea>
+                </label>
+                <button class="button button-primary" type="submit">
+                  Demander l’action
+                </button>
+              </form>
+            </article>
+            <div class="panel module-list-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Dossiers de modération</h3>
+                  <p>
+                    Les décisions et motifs sont conservés dans le journal
+                    d’audit.
+                  </p>
+                </div>
+                <button
+                  class="button button-quiet"
+                  data-refresh="moderation"
+                  type="button"
+                >
+                  Actualiser
+                </button>
+              </div>
+              <div id="moderation-list" class="record-list"></div>
+            </div>
+            <div class="panel module-list-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Contestations</h3>
+                  <p>
+                    La décision d’une contestation ne peut être modifiée qu’une
+                    seule fois.
+                  </p>
+                </div>
+                <button
+                  class="button button-quiet"
+                  data-refresh="moderation"
+                  type="button"
+                >
+                  Actualiser
+                </button>
+              </div>
+              <div id="appeals-list" class="record-list"></div>
+            </div>
+          </section>
+
+          <section id="audit-view" class="workspace-view" hidden>
+            <div class="section-intro">
+              <p class="eyebrow">Traçabilité</p>
+              <h2>Journal d’audit</h2>
+              <p>
+                Historique des actions sensibles effectuées dans ce serveur.
+              </p>
+            </div>
+            <p
+              class="module-status"
+              data-status-for="audit"
+              role="status"
+              aria-live="polite"
+              hidden
+            ></p>
+            <div class="panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Événements récents</h3>
+                  <p>Jusqu’aux 50 événements les plus récents</p>
+                </div>
+                <button
+                  class="button button-quiet"
+                  data-refresh="audit"
+                  type="button"
+                >
+                  Actualiser
+                </button>
+              </div>
+              <div id="audit-list" class="record-list"></div>
+            </div>
+          </section>
+
+          <section id="notifications-view" class="workspace-view" hidden>
+            <div class="section-intro">
+              <p class="eyebrow">Votre espace</p>
+              <h2>Notifications</h2>
+              <p>
+                Alertes ciblées concernant les tâches, signalements et
+                candidatures de ce serveur.
+              </p>
+            </div>
+            <p
+              class="module-status"
+              data-status-for="notifications"
+              role="status"
+              aria-live="polite"
+              hidden
+            ></p>
+            <div class="panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Vos notifications</h3>
+                  <p>Ces notifications sont privées et liées à votre compte.</p>
+                </div>
+                <button
+                  class="button button-quiet"
+                  data-refresh="notifications"
+                  type="button"
+                >
+                  Actualiser
+                </button>
+              </div>
+              <div id="notifications-list" class="record-list"></div>
+            </div>
+          </section>
+
+          <section id="settings-view" class="workspace-view" hidden>
+            <div class="section-intro">
+              <p class="eyebrow">Configuration</p>
+              <h2>Paramètres du serveur</h2>
+              <p>
+                Gérez le fuseau des analytics et consultez les rôles Nexus
+                autorisés.
+              </p>
+            </div>
+            <p
+              class="module-status"
+              data-status-for="settings"
+              role="status"
+              aria-live="polite"
+              hidden
+            ></p>
+            <article class="panel">
+              <h3>Fuseau horaire des analytics</h3>
+              <p id="settings-timezone-current" class="muted">Chargement…</p>
+              <form id="settings-timezone-form" class="inline-form">
+                <label class="sr-only" for="settings-timezone"
+                  >Fuseau horaire IANA</label
+                >
+                <input
+                  id="settings-timezone"
+                  name="timezone"
+                  type="text"
+                  maxlength="64"
+                  required
+                  placeholder="Europe/Paris"
+                />
+                <button class="button button-primary" type="submit">
+                  Enregistrer
+                </button>
+              </form>
+            </article>
+            <section class="panel module-list-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Rôles Nexus</h3>
+                  <p>Les permissions restent vérifiées côté API.</p>
+                </div>
+              </div>
+              <p
+                class="module-status"
+                data-status-for="settings-roles"
+                role="status"
+                aria-live="polite"
+                hidden
+              ></p>
+              <div class="table-wrap">
+                <table id="roles-table" aria-label="Rôles Nexus">
+                  <caption class="sr-only">
+                    Rôles et permissions configurés pour ce serveur
+                  </caption>
+                </table>
+              </div>
+              <form id="role-create-form" class="stack-form role-form">
+                <h3>Créer un rôle</h3>
+                <label
+                  >Nom du rôle<input
+                    name="name"
+                    required
+                    minlength="2"
+                    maxlength="50"
+                /></label>
+                <fieldset id="role-permission-options">
+                  <legend>Permissions à accorder</legend>
+                  <p class="muted">
+                    Seules les permissions que vous détenez peuvent être
+                    attribuées.
+                  </p>
+                </fieldset>
+                <button class="button button-primary" type="submit">
+                  Créer le rôle
+                </button>
+              </form>
+            </section>
+          </section>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,442 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String            @id @default(cuid())
+  discordId  String            @unique
+  username   String
+  globalName String?
+  avatar     String?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  sessions   UserSession[]
+  guilds     GuildMembership[]
+}
+
+model Guild {
+  id                     String                  @id
+  name                   String
+  analyticsTimezone      String                  @default("UTC")
+  analyticsStartedAt     DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  members                GuildMembership[]
+  roles                  GuildRole[]
+  auditLogs              PermissionAuditLog[]
+  botEventReceipts       BotEventReceipt[]
+  messageStatistics      MessageStatistic[]
+  dailyMessageStatistics DailyMessageStatistic[]
+  memberSnapshots        GuildMemberSnapshot[]
+  dailyStatistics        GuildDailyStatistic[]
+  dailyMemberActivities  DailyMemberActivity[]
+  staffProfiles          StaffProfile[]
+  staffTeams             StaffTeam[]
+  tasks                  StaffTask[]
+  reports                StaffReport[]
+  applications           StaffApplication[]
+  moderationCases        ModerationCase[]
+  auditEvents            AuditEvent[]
+  notifications          Notification[]
+  moderationActions      ModerationAction[]
+}
+
+model GuildMembership {
+  id              String          @id @default(cuid())
+  userId          String
+  guildId         String
+  role            String          @default("OWNER")
+  createdAt       DateTime        @default(now())
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guild           Guild           @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  roleAssignments UserGuildRole[]
+
+  @@unique([userId, guildId])
+  @@index([guildId])
+}
+
+model StaffProfile {
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String
+  title     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, userId])
+  @@index([guildId, active])
+}
+
+model StaffTeam {
+  id          String            @id @default(cuid())
+  guildId     String
+  name        String
+  description String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  guild       Guild             @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  members     StaffTeamMember[]
+
+  @@unique([guildId, name])
+  @@index([guildId, createdAt])
+}
+
+model StaffTeamMember {
+  teamId    String
+  userId    String
+  createdAt DateTime  @default(now())
+  team      StaffTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+  @@index([userId])
+}
+
+enum StaffTaskStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  VALIDATED
+}
+
+model StaffTask {
+  id          String             @id @default(cuid())
+  guildId     String
+  title       String
+  description String
+  status      StaffTaskStatus    @default(OPEN)
+  assigneeId  String?
+  createdBy   String
+  dueAt       DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  guild       Guild              @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  comments    StaffTaskComment[]
+
+  @@index([guildId, status, createdAt])
+  @@index([guildId, assigneeId, dueAt])
+}
+
+model StaffTaskComment {
+  id        String    @id @default(cuid())
+  guildId   String
+  taskId    String
+  authorId  String
+  content   String
+  createdAt DateTime  @default(now())
+  task      StaffTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, taskId, createdAt])
+}
+
+enum StaffItemStatus {
+  OPEN
+  UNDER_REVIEW
+  ACCEPTED
+  REJECTED
+  CLOSED
+}
+
+model StaffReport {
+  id              String          @id @default(cuid())
+  guildId         String
+  reporterId      String
+  targetDiscordId String
+  category        String
+  details         String
+  status          StaffItemStatus @default(OPEN)
+  assignedTo      String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  guild           Guild           @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, status, createdAt])
+}
+
+model StaffApplication {
+  id                 String          @id @default(cuid())
+  guildId            String
+  applicantId        String
+  applicantDiscordId String
+  answers            Json
+  status             StaffItemStatus @default(OPEN)
+  reviewedBy         String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  guild              Guild           @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, status, createdAt])
+}
+
+enum ModerationActionType {
+  WARN
+  TIMEOUT
+  KICK
+  BAN
+}
+
+enum ModerationCaseStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  APPEALED
+  REVERSED
+}
+
+model ModerationCase {
+  id              String               @id @default(cuid())
+  guildId         String
+  targetDiscordId String
+  actorUserId     String
+  actorDiscordId  String
+  action          ModerationActionType
+  reason          String
+  durationSeconds Int?
+  status          ModerationCaseStatus @default(PENDING)
+  resultMessage   String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  guild           Guild                @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  appeal          ModerationAppeal?
+  job             ModerationAction?
+
+  @@index([guildId, targetDiscordId, createdAt])
+  @@index([guildId, status, createdAt])
+}
+
+enum ModerationAppealStatus {
+  OPEN
+  ACCEPTED
+  REJECTED
+}
+
+model ModerationAppeal {
+  id                 String                 @id @default(cuid())
+  guildId            String
+  caseId             String                 @unique
+  appellantId        String
+  appellantDiscordId String
+  message            String
+  status             ModerationAppealStatus @default(OPEN)
+  handledBy          String?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  case               ModerationCase         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, status, createdAt])
+}
+
+enum ModerationJobStatus {
+  QUEUED
+  PROCESSING
+  SUCCEEDED
+  FAILED
+}
+
+model ModerationAction {
+  id        String              @id @default(cuid())
+  guildId   String
+  caseId    String              @unique
+  status    ModerationJobStatus @default(QUEUED)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  guild     Guild               @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  case      ModerationCase      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([guildId, status])
+}
+
+model AuditEvent {
+  id          String   @id @default(cuid())
+  guildId     String
+  actorUserId String
+  action      String
+  subjectType String
+  subjectId   String?
+  details     Json
+  createdAt   DateTime @default(now())
+  guild       Guild    @relation(fields: [guildId], references: [id], onDelete: Restrict)
+
+  @@index([guildId, createdAt])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  guildId   String
+  userId    String
+  type      String
+  message   String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  guild     Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, userId, readAt, createdAt])
+}
+
+model GuildRole {
+  id          String           @id @default(cuid())
+  guildId     String
+  key         String
+  name        String
+  rank        Int              @default(0)
+  isSystem    Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  guild       Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  permissions RolePermission[]
+  assignments UserGuildRole[]
+
+  @@unique([guildId, key])
+  @@index([guildId, rank])
+}
+
+model Permission {
+  key         String           @id
+  description String
+  roles       RolePermission[]
+}
+
+enum PermissionEffect {
+  ALLOW
+  DENY
+}
+
+model RolePermission {
+  roleId        String
+  permissionKey String
+  effect        PermissionEffect
+  role          GuildRole        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission    Permission       @relation(fields: [permissionKey], references: [key], onDelete: Cascade)
+
+  @@id([roleId, permissionKey])
+  @@index([permissionKey])
+}
+
+model UserGuildRole {
+  membershipId String
+  roleId       String
+  createdAt    DateTime        @default(now())
+  membership   GuildMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  role         GuildRole       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([membershipId, roleId])
+  @@index([roleId])
+}
+
+model PermissionAuditLog {
+  id           String   @id @default(cuid())
+  guildId      String
+  actorUserId  String
+  action       String
+  targetUserId String?
+  roleId       String?
+  details      Json
+  createdAt    DateTime @default(now())
+  guild        Guild    @relation(fields: [guildId], references: [id], onDelete: Restrict)
+
+  @@index([guildId, createdAt])
+  @@index([actorUserId, createdAt])
+}
+
+model BotEventReceipt {
+  eventId    String   @id
+  guildId    String
+  type       String
+  occurredAt DateTime
+  receivedAt DateTime @default(now())
+  guild      Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, receivedAt])
+}
+
+model BotRequestNonce {
+  nonce     String   @id
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+model MessageStatistic {
+  guildId      String
+  channelId    String
+  bucketStart  DateTime
+  messageCount Int      @default(0)
+  updatedAt    DateTime @updatedAt
+  guild        Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@id([guildId, channelId, bucketStart])
+  @@index([guildId, bucketStart])
+}
+
+model DailyMessageStatistic {
+  guildId      String   @map("guildId")
+  channelId    String
+  activityDate DateTime @db.Date
+  messageCount Int      @default(0)
+  guild        Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@id([guildId, channelId, activityDate])
+  @@index([guildId, activityDate])
+}
+
+model GuildDailyStatistic {
+  guildId      String   @map("guildId")
+  activityDate DateTime @db.Date
+  joinCount    Int      @default(0)
+  leaveCount   Int      @default(0)
+  guild        Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@id([guildId, activityDate])
+  @@index([guildId, activityDate])
+}
+
+model DailyMemberActivity {
+  guildId        String   @map("guildId")
+  activityDate   DateTime @db.Date
+  memberKey      String   @db.VarChar(64)
+  messageCount   Int      @default(0)
+  reactionCount  Int      @default(0)
+  commandCount   Int      @default(0)
+  voiceSeconds   Int      @default(0)
+  voiceSessions  Int      @default(0)
+  lastActivityAt DateTime
+  guild          Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@id([guildId, activityDate, memberKey])
+  @@index([guildId, activityDate])
+}
+
+model GuildMemberSnapshot {
+  guildId       String
+  discordUserId String
+  displayName   String?
+  joinedAt      DateTime?
+  roleIds       Json
+  syncedAt      DateTime  @default(now())
+  guild         Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@id([guildId, discordUserId])
+  @@index([guildId, syncedAt])
+}
+
+model UserSession {
+  id                   String    @id
+  userId               String
+  encryptedAccessToken String?
+  accessTokenExpiresAt DateTime?
+  selectedGuildId      String?
+  expiresAt            DateTime
+  createdAt            DateTime  @default(now())
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}

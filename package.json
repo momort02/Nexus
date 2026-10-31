@@ -1,0 +1,26 @@
+{
+  "name": "nexus",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.12.1",
+  "scripts": {
+    "dev": "corepack pnpm --parallel --filter @nexus/web --filter @nexus/api dev",
+    "build": "corepack pnpm --recursive --if-present build",
+    "typecheck": "corepack pnpm --recursive --if-present typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write \"apps/**/*.{js,ts,json,html,css}\" \"packages/**/*.{ts,json}\" package.json tsconfig.base.json eslint.config.js .prettierrc.json docker-compose.yml pnpm-workspace.yaml README.md",
+    "format:check": "prettier --check \"apps/**/*.{js,ts,json,html,css}\" \"packages/**/*.{ts,json}\" package.json tsconfig.base.json eslint.config.js .prettierrc.json docker-compose.yml pnpm-workspace.yaml README.md",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.30.0",
+    "@types/node": "^24.0.10",
+    "eslint": "^9.30.0",
+    "globals": "^16.3.0",
+    "prettier": "^3.6.2",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.36.0",
+    "vitest": "^3.2.4"
+  }
+}
