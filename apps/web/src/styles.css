@@ -79,24 +79,14 @@ textarea:focus-visible {
 }
 
 .brand {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 0.7rem;
-  margin: 0.25rem 0 2rem;
-  color: #f4f5fa;
-  font-size: 1.35rem;
-  font-weight: 750;
-  letter-spacing: -0.04em;
-  text-decoration: none;
-}
-
-.brand img {
   display: block;
-  width: 2.5rem;
-  height: 2.5rem;
-  flex: 0 0 auto;
-  filter: drop-shadow(0 5px 12px rgb(88 101 242 / 25%));
+  width: 215px;
+  height: 121px;
+
+  background-image: url("./banniere.png");
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .sidebar-label,
