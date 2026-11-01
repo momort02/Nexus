@@ -9,8 +9,14 @@ const elements = {
   noGuilds: document.querySelector('#no-guilds'),
   availableGuildForm: document.querySelector('#available-guild-form'),
   availableGuildSelector: document.querySelector('#available-guild-selector'),
+  availableGuildStatus: document.querySelector('#available-guild-status'),
+  addGuildButton: document.querySelector('#add-guild-button'),
+  closeAvailableGuilds: document.querySelector('#close-available-guilds'),
+  reauthLink: document.querySelector('#discord-reauth-link'),
   dashboard: document.querySelector('#dashboard'),
   guildSelector: document.querySelector('#guild-selector'),
+  mobileNavToggle: document.querySelector('#mobile-nav-toggle'),
+  sideNav: document.querySelector('#side-nav'),
   pageTitle: document.querySelector('#page-title'),
   pageEyebrow: document.querySelector('#page-eyebrow'),
   logout: document.querySelector('#logout-button'),
@@ -44,6 +50,7 @@ let messagesChart = null;
 let membersChart = null;
 let currentView = 'analytics';
 let sessionUser = null;
+let guildMemberships = [];
 let realtimeSocket = null;
 let memberPage = 1;
 let memberPages = 0;
@@ -160,6 +167,7 @@ async function api(path, options = {}) {
       payload?.error?.message ?? `La requête a échoué (${response.status}).`,
     );
     error.status = response.status;
+    error.code = payload?.error?.code;
     throw error;
   }
   return response.status === 204 ? null : response.json();
@@ -254,6 +262,15 @@ async function loadMembers() {
     const response = await api(
       `/guilds/${escapePath(selectedGuildId)}/members?${params}`,
     );
+    const roleFilter = document.querySelector('#members-role-filter');
+    const selectedRoleId = roleFilter.value;
+    roleFilter.replaceChildren(new Option('Tous les rôles', ''));
+    for (const role of response.roles) {
+      roleFilter.add(new Option(role.name, role.id));
+    }
+    roleFilter.value = response.roles.some((role) => role.id === selectedRoleId)
+      ? selectedRoleId
+      : '';
     renderDataTable(document.querySelector('#members-table'), {
       columns: [
         {
@@ -276,9 +293,11 @@ async function loadMembers() {
         {
           label: 'Rôles Discord',
           value: (member) =>
-            member.roleIds.length
-              ? member.roleIds.join(', ')
-              : 'Aucun rôle observé',
+            member.roles.length
+              ? member.roles.map((role) => role.name).join(', ')
+              : member.roleIds.length
+                ? 'Noms des rôles en attente de synchronisation'
+                : 'Aucun rôle observé',
         },
         {
           label: 'Dernière synchronisation',
@@ -632,9 +651,9 @@ async function loadChannels() {
   const params = rangeQuery();
   params.set('page', String(channelPage));
   params.set('pageSize', '10');
-  const channelId = elements.channelFilter.value.trim();
-  if (channelId) {
-    params.set('channelId', channelId);
+  const channelName = elements.channelFilter.value.trim();
+  if (channelName) {
+    params.set('channelName', channelName);
   }
   const response = await api(
     `/guilds/${escapePath(selectedGuildId)}/analytics/channels?${params}`,
@@ -643,8 +662,16 @@ async function loadChannels() {
   for (const channel of response.channels) {
     const row = document.createElement('tr');
     const name = document.createElement('td');
+    const channelLabel = document.createElement('span');
+    channelLabel.className = 'channel-name';
+    channelLabel.textContent = channel.name
+      ? `#${channel.name}`
+      : 'Nom du salon indisponible';
+    const channelId = document.createElement('small');
+    channelId.className = 'channel-id';
+    channelId.textContent = channel.channelId;
     const count = document.createElement('td');
-    name.textContent = channel.channelId;
+    name.append(channelLabel, channelId);
     count.textContent = formatter.format(channel.messageCount);
     row.append(name, count);
     elements.channelsBody.append(row);
@@ -737,9 +764,12 @@ async function loadSession() {
     const me = await api('/me');
     sessionUser = me.user;
     elements.logout.hidden = false;
+    elements.addGuildButton.hidden = false;
     const { guilds } = await api('/guilds');
+    guildMemberships = guilds;
     if (guilds.length === 0) {
-      await loadAvailableGuilds();
+      elements.closeAvailableGuilds.hidden = true;
+      await loadAvailableGuilds(guilds);
       return;
     }
     elements.guildSelector.replaceChildren();
@@ -786,16 +816,52 @@ async function loadSession() {
   }
 }
 
-async function loadAvailableGuilds() {
+async function loadAvailableGuilds(existingGuilds = []) {
   elements.noGuilds.hidden = false;
-  const available = await api('/guilds/available');
+  elements.closeAvailableGuilds.hidden = existingGuilds.length === 0;
+  elements.addGuildButton.disabled = true;
+  elements.availableGuildStatus.textContent =
+    'Actualisation de la liste depuis Discord…';
+  elements.availableGuildStatus.dataset.state = 'loading';
+  elements.availableGuildStatus.hidden = false;
+  elements.reauthLink.hidden = true;
   elements.availableGuildSelector.replaceChildren(
-    new Option('Sélectionnez un serveur', ''),
+    new Option('Chargement des serveurs…', ''),
   );
-  for (const guild of available.guilds.filter(
-    (entry) => entry.canCreateNexus,
-  )) {
-    elements.availableGuildSelector.add(new Option(guild.name, guild.id));
+  try {
+    const available = await api('/guilds/available');
+    const existingGuildIds = new Set(existingGuilds.map((guild) => guild.id));
+    const addableGuilds = available.guilds.filter(
+      (guild) => guild.canCreateNexus && !existingGuildIds.has(guild.id),
+    );
+    elements.availableGuildSelector.replaceChildren(
+      new Option(
+        addableGuilds.length
+          ? 'Sélectionnez un serveur'
+          : 'Aucun nouveau serveur admissible',
+        '',
+      ),
+    );
+    for (const guild of addableGuilds) {
+      elements.availableGuildSelector.add(new Option(guild.name, guild.id));
+    }
+    elements.availableGuildStatus.textContent = addableGuilds.length
+      ? `${addableGuilds.length} serveur${addableGuilds.length === 1 ? '' : 's'} admissible${addableGuilds.length === 1 ? '' : 's'} trouvé${addableGuilds.length === 1 ? '' : 's'} sur Discord.`
+      : 'Aucun nouveau serveur où vous pouvez gérer le serveur. Vérifiez vos permissions Discord puis réessayez.';
+    elements.availableGuildStatus.dataset.state = addableGuilds.length
+      ? 'success'
+      : 'empty';
+  } catch (error) {
+    elements.availableGuildStatus.textContent =
+      error.code === 'discord_reauth_required'
+        ? 'Votre connexion Discord doit être renouvelée pour actualiser les serveurs.'
+        : error.message;
+    elements.availableGuildStatus.dataset.state =
+      error.status === 403 ? 'denied' : 'error';
+    elements.reauthLink.hidden = error.status !== 401;
+    throw error;
+  } finally {
+    elements.addGuildButton.disabled = false;
   }
 }
 
@@ -830,8 +896,23 @@ for (const link of document.querySelectorAll('[data-view]')) {
     const view = link.dataset.view;
     setActiveView(view);
     window.history.replaceState(null, '', `#${view}`);
+    if (window.matchMedia('(max-width: 680px)').matches) {
+      elements.sideNav.classList.add('mobile-collapsed');
+      elements.mobileNavToggle.setAttribute('aria-expanded', 'false');
+      elements.mobileNavToggle.lastElementChild.textContent = 'Menu';
+    }
   });
 }
+
+elements.mobileNavToggle.addEventListener('click', () => {
+  const isExpanded =
+    elements.mobileNavToggle.getAttribute('aria-expanded') === 'true';
+  elements.sideNav.classList.toggle('mobile-collapsed', isExpanded);
+  elements.mobileNavToggle.setAttribute('aria-expanded', String(!isExpanded));
+  elements.mobileNavToggle.lastElementChild.textContent = isExpanded
+    ? 'Menu'
+    : 'Fermer';
+});
 
 elements.availableGuildForm.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -843,8 +924,27 @@ elements.availableGuildForm.addEventListener('submit', async (event) => {
     await api(`/guilds/${escapePath(guildId)}/select`, { method: 'POST' });
     window.location.reload();
   } catch (error) {
-    showStatus(error.message, 'error');
+    elements.availableGuildStatus.textContent = error.message;
+    elements.availableGuildStatus.dataset.state =
+      error.status === 403 ? 'denied' : 'error';
+    elements.availableGuildStatus.hidden = false;
   }
+});
+
+elements.addGuildButton.addEventListener('click', async () => {
+  try {
+    await loadAvailableGuilds(guildMemberships);
+  } catch (error) {
+    if (!elements.availableGuildStatus.textContent) {
+      elements.availableGuildStatus.textContent = error.message;
+      elements.availableGuildStatus.dataset.state = 'error';
+      elements.availableGuildStatus.hidden = false;
+    }
+  }
+});
+
+elements.closeAvailableGuilds.addEventListener('click', () => {
+  elements.noGuilds.hidden = true;
 });
 
 elements.channelForm.addEventListener('submit', (event) => {

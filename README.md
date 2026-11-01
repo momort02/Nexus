@@ -40,10 +40,29 @@ corepack pnpm dev
 ```
 
 L'API répond sur `http://localhost:3000/health` par défaut. Le site web utilise
-le serveur de développement Vite sur `http://localhost:5173`. Pour OAuth,
+le serveur de développement Vite sur `http://localhost:5173`. La page d'accueil
+documente l'installation du bot ; le dashboard est disponible sur
+`http://localhost:5173/dashboard/`. En production, le build produit
+`dist/index.html` pour l'accueil et `dist/dashboard/index.html` pour le
+dashboard. Configurez l'hébergement statique pour servir ce dernier à
+`https://mon-url/dashboard/`. Pour OAuth,
 gardez le même nom d'hôte (`localhost`) dans le navigateur et dans
 `DISCORD_REDIRECT_URI` ; `localhost` et `127.0.0.1` ne partagent pas leurs
 cookies.
+Après avoir ajouté le bot à un nouveau serveur, connectez-vous au dashboard et
+utilisez « Ajouter un serveur » pour actualiser la liste Discord, puis créez
+l'espace Nexus correspondant. L'utilisateur connecté doit être propriétaire
+du serveur ou disposer de `Manage Server` ; l'installation du bot seule ne
+crée pas automatiquement un espace Nexus.
+
+Les pages publiques des documents sont disponibles sur
+`http://localhost:5173/terms.html` et `http://localhost:5173/privacy.html` en
+développement. Le build web produit également `terms.html` et `privacy.html`.
+Pour les renseigner dans le portail Discord, déployez ces pages sur une origine
+publique HTTPS et utilisez respectivement `/terms.html` et `/privacy.html`.
+Les textes contiennent des champs à compléter et ne doivent pas être publiés
+comme documents définitifs avant validation des coordonnées, de l’hébergement
+et des durées de conservation.
 
 Démarrer le bot séparément, après avoir configuré son token :
 
@@ -72,6 +91,12 @@ pas l'intent `Message Content` : aucun contenu de message n'est lu ni transmis.
 Les statistiques commencent à l'activation de la collecte et ne représentent
 pas l'historique antérieur.
 
+Le lien public d'installation est disponible depuis la page d'accueil. Les
+commandes sont `/nexus-health` (vérification de la connexion) et `/nexus-sync`
+(synchronisation des membres, réservée aux utilisateurs ayant `Manage Server`).
+La documentation publique et les permissions minimales sont aussi présentées
+sur `http://localhost:5173/`.
+
 Renseignez `DISCORD_BOT_TOKEN`, `DISCORD_CLIENT_ID`,
 `BOT_API_BASE_URL`, `BOT_API_SECRET`, `BOT_ANALYTICS_KEY` et
 `BOT_HEALTH_PORT` dans `.env`.
@@ -93,13 +118,16 @@ en mémoire, réessaie au plus trois fois et expose l'état du processus sur
   indicateurs DAU/WAU/MAU ; accepte `from`, `to`, `compareFrom` et `compareTo`
   au format `YYYY-MM-DD`.
 - `GET /api/v1/guilds/:guildId/analytics/channels` : volumes paginés, filtrables
-  par `channelId`, `from` et `to`.
+  par nom (`channelName`) ou identifiant (`channelId`), `from` et `to`.
 - `GET /api/v1/guilds/:guildId/analytics/export.csv` : export agrégé, protégé
   par `analytics.export`.
 - `PUT /api/v1/guilds/:guildId/analytics/timezone` : configure le fuseau IANA
   du serveur avant le début de la collecte, protégé par `settings.manage`.
 
 Les lectures exigent `analytics.view`, une session et l'accès Nexus à la guild.
+Le bot synchronise les noms des salons et rôles Discord au démarrage et lors
+de leurs changements. Utilisez `/nexus-sync` pour actualiser les noms des rôles
+des membres déjà synchronisés.
 Une journée est calculée selon le fuseau du serveur (UTC par défaut). Le DAU est
 le nombre de membres humains distincts ayant envoyé un message, ajouté une
 réaction, utilisé une commande slash ou participé à une session vocale observée

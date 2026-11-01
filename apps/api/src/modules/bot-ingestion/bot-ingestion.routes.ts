@@ -11,11 +11,20 @@ const eventBase = {
   guildId: discordIdSchema,
   occurredAt: z.string().datetime({ offset: true }),
 };
+const namedDiscordResources = z
+  .array(
+    z.object({
+      id: discordIdSchema,
+      name: z.string().trim().min(1).max(100),
+    }),
+  )
+  .max(750);
 const botEventSchema = z.discriminatedUnion('type', [
   z.object({
     ...eventBase,
     type: z.literal('message.count'),
     channelId: discordIdSchema,
+    channelName: z.string().trim().min(1).max(100).optional(),
     memberKey: z.string().regex(/^[\da-f]{64}$/),
     bucketStart: z.string().datetime({ offset: true }),
   }),
@@ -39,6 +48,7 @@ const botEventSchema = z.discriminatedUnion('type', [
     displayName: z.string().trim().min(1).max(128).nullable().optional(),
     joinedAt: z.string().datetime({ offset: true }).nullable(),
     roleIds: z.array(discordIdSchema).max(250),
+    roleNames: namedDiscordResources.max(250).optional(),
   }),
   z.object({
     ...eventBase,
@@ -52,6 +62,13 @@ const botEventSchema = z.discriminatedUnion('type', [
     displayName: z.string().trim().min(1).max(128).nullable().optional(),
     joinedAt: z.string().datetime({ offset: true }).nullable(),
     roleIds: z.array(discordIdSchema).max(250),
+    roleNames: namedDiscordResources.max(250).optional(),
+  }),
+  z.object({
+    ...eventBase,
+    type: z.literal('guild.metadata'),
+    channels: namedDiscordResources,
+    roles: namedDiscordResources,
   }),
 ]);
 const validatedBotEventSchema = botEventSchema.superRefine((event, context) => {

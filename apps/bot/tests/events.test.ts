@@ -7,6 +7,7 @@ import {
   memberLeftEvent,
   memberSnapshotEvent,
   messageCountEvent,
+  guildMetadataEvent,
 } from '../src/events/handlers.js';
 import { ApiEventTransport } from '../src/transport/api-event-transport.js';
 
@@ -33,6 +34,42 @@ const event: DiscordBotEvent = {
 };
 
 describe('bot event handlers', () => {
+  it('creates a guild metadata event with channel and role names', () => {
+    const metadata = guildMetadataEvent(
+      {
+        id: '11111111111111111',
+        channels: {
+          cache: {
+            map: (
+              project: (channel: { id: string; name: string }) => unknown,
+            ) => [project({ id: '22222222222222222', name: 'general' })],
+          },
+        },
+        roles: {
+          cache: {
+            filter: (
+              predicate: (role: { id: string; name: string }) => boolean,
+            ) =>
+              [
+                { id: '11111111111111111', name: '@everyone' },
+                { id: '44444444444444444', name: 'Moderator' },
+              ].filter(predicate),
+            map: (project: (role: { id: string; name: string }) => unknown) =>
+              project({ id: '33333333333333333', name: 'Moderator' }),
+          },
+        },
+      } as never,
+      new Date('2026-10-31T10:00:00.000Z'),
+    );
+
+    expect(metadata).toMatchObject({
+      type: 'guild.metadata',
+      guildId: '11111111111111111',
+      channels: [{ id: '22222222222222222', name: 'general' }],
+      roles: [{ id: '44444444444444444', name: 'Moderator' }],
+    });
+  });
+
   it('creates UTC hourly aggregates without including message content', () => {
     const aggregate = messageCountEvent(messageFixture, 'test-secret');
     expect(aggregate).toMatchObject({
@@ -41,6 +78,18 @@ describe('bot event handlers', () => {
     });
     expect(aggregate).not.toHaveProperty('content');
     expect(aggregate).not.toHaveProperty('messageId');
+
+    const namedChannelEvent = messageCountEvent(
+      {
+        ...messageFixture,
+        guild: {
+          id: messageFixture.guildId,
+          channels: { cache: { get: () => ({ name: 'général' }) } },
+        },
+      },
+      'test-secret',
+    );
+    expect(namedChannelEvent?.channelName).toBe('général');
   });
 
   it('ignores messages without a guild or from bots', () => {
@@ -79,8 +128,13 @@ describe('bot event handlers', () => {
       joinedAt: new Date('2026-10-30T12:00:00.000Z'),
       roles: {
         cache: {
-          filter: (predicate: (role: { id: string }) => boolean) =>
-            [{ id: guildId }, { id: '44444444444444444' }].filter(predicate),
+          filter: (
+            predicate: (role: { id: string; name: string }) => boolean,
+          ) =>
+            [
+              { id: guildId, name: '@everyone' },
+              { id: '44444444444444444', name: 'Modérateur' },
+            ].filter(predicate),
         },
       },
     } as never;
@@ -91,6 +145,7 @@ describe('bot event handlers', () => {
       discordUserId: userId,
       displayName: 'Amaury',
       roleIds: ['44444444444444444'],
+      roleNames: [{ id: '44444444444444444', name: 'Modérateur' }],
     });
     expect(memberJoinedEvent(member, occurredAt).eventId).toBe(joined.eventId);
 
@@ -106,6 +161,7 @@ describe('bot event handlers', () => {
       type: 'member.snapshot',
       discordUserId: userId,
       displayName: 'Amaury',
+      roleNames: [{ id: '44444444444444444', name: 'Modérateur' }],
     });
     expect(
       memberSnapshotEvent(member, new Date(occurredAt.getTime() + 1000))

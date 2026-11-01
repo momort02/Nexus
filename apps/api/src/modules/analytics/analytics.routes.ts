@@ -264,6 +264,14 @@ export function createAnalyticsRouter(dependencies: {
           'The channel identifier is invalid.',
         );
       }
+      const channelName = queryString(request.query.channelName, 'channelName');
+      if (channelName && channelName.trim().length > 100) {
+        throw new ApiError(
+          400,
+          'invalid_channel_name',
+          'The channel name filter is invalid.',
+        );
+      }
       const result = await dependencies.repository.listChannels({
         guildId,
         from: dateBucket(range.from),
@@ -271,6 +279,7 @@ export function createAnalyticsRouter(dependencies: {
         page,
         pageSize,
         ...(channelId.data ? { channelId: channelId.data } : {}),
+        ...(channelName?.trim() ? { channelName: channelName.trim() } : {}),
       });
       response.json({
         ...result,
@@ -321,6 +330,7 @@ export function createAnalyticsRouter(dependencies: {
         'recordType',
         'date',
         'channelId',
+        'channelName',
         'from',
         'to',
         'timezone',
@@ -332,6 +342,7 @@ export function createAnalyticsRouter(dependencies: {
       const dailyRows = summary.series.map((point) => [
         'daily',
         point.date,
+        '',
         '',
         range.from,
         range.to,
@@ -345,6 +356,7 @@ export function createAnalyticsRouter(dependencies: {
         'channel',
         '',
         channel.channelId,
+        channel.name ?? '',
         range.from,
         range.to,
         timezone,

@@ -44,6 +44,8 @@ model Guild {
   auditEvents            AuditEvent[]
   notifications          Notification[]
   moderationActions      ModerationAction[]
+  discordChannels        DiscordGuildChannel[]
+  discordRoles           DiscordGuildRole[]
 }
 
 model GuildMembership {
@@ -425,6 +427,26 @@ model GuildMemberSnapshot {
 
   @@id([guildId, discordUserId])
   @@index([guildId, syncedAt])
+}
+
+model DiscordGuildChannel {
+  guildId   String
+  channelId String
+  name      String
+  updatedAt DateTime @updatedAt
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@id([guildId, channelId])
+}
+
+model DiscordGuildRole {
+  guildId   String
+  roleId    String
+  name      String
+  updatedAt DateTime @updatedAt
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@id([guildId, roleId])
 }
 
 model UserSession {

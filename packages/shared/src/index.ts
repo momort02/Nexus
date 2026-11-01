@@ -15,6 +15,7 @@ export interface DiscordBotEventBase {
 export interface DiscordMessageCountEvent extends DiscordBotEventBase {
   type: 'message.count';
   channelId: string;
+  channelName?: string | undefined;
   memberKey: string;
   bucketStart: string;
 }
@@ -38,6 +39,7 @@ export interface DiscordMemberJoinedEvent extends DiscordBotEventBase {
   displayName?: string | null | undefined;
   joinedAt: string | null;
   roleIds: string[];
+  roleNames?: Array<{ id: string; name: string }> | undefined;
 }
 
 export interface DiscordMemberLeftEvent extends DiscordBotEventBase {
@@ -51,6 +53,13 @@ export interface DiscordMemberSnapshotEvent extends DiscordBotEventBase {
   displayName?: string | null | undefined;
   joinedAt: string | null;
   roleIds: string[];
+  roleNames?: Array<{ id: string; name: string }> | undefined;
+}
+
+export interface DiscordGuildMetadataEvent extends DiscordBotEventBase {
+  type: 'guild.metadata';
+  channels: Array<{ id: string; name: string }>;
+  roles: Array<{ id: string; name: string }>;
 }
 
 export type DiscordBotEvent =
@@ -59,7 +68,8 @@ export type DiscordBotEvent =
   | DiscordVoiceSessionEvent
   | DiscordMemberJoinedEvent
   | DiscordMemberLeftEvent
-  | DiscordMemberSnapshotEvent;
+  | DiscordMemberSnapshotEvent
+  | DiscordGuildMetadataEvent;
 
 export interface DiscordBotEventBatch {
   events: DiscordBotEvent[];

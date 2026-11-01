@@ -54,15 +54,58 @@ export class PrismaBotIngestionRepository implements BotIngestionRepository {
           return 'duplicate';
         }
 
-        await transaction.guild.updateMany({
-          where: {
-            id: event.guildId,
-            analyticsStartedAt: null,
-          },
-          data: { analyticsStartedAt: new Date(event.occurredAt) },
-        });
+        if (event.type !== 'guild.metadata') {
+          await transaction.guild.updateMany({
+            where: {
+              id: event.guildId,
+              analyticsStartedAt: null,
+            },
+            data: { analyticsStartedAt: new Date(event.occurredAt) },
+          });
+        }
 
-        if (event.type === 'message.count') {
+        if (event.type === 'guild.metadata') {
+          await transaction.discordGuildChannel.deleteMany({
+            where: { guildId: event.guildId },
+          });
+          await transaction.discordGuildRole.deleteMany({
+            where: { guildId: event.guildId },
+          });
+          if (event.channels.length > 0) {
+            await transaction.discordGuildChannel.createMany({
+              data: event.channels.map((channel) => ({
+                guildId: event.guildId,
+                channelId: channel.id,
+                name: channel.name,
+              })),
+            });
+          }
+          if (event.roles.length > 0) {
+            await transaction.discordGuildRole.createMany({
+              data: event.roles.map((role) => ({
+                guildId: event.guildId,
+                roleId: role.id,
+                name: role.name,
+              })),
+            });
+          }
+        } else if (event.type === 'message.count') {
+          if (event.channelName) {
+            await transaction.discordGuildChannel.upsert({
+              where: {
+                guildId_channelId: {
+                  guildId: event.guildId,
+                  channelId: event.channelId,
+                },
+              },
+              create: {
+                guildId: event.guildId,
+                channelId: event.channelId,
+                name: event.channelName,
+              },
+              update: { name: event.channelName },
+            });
+          }
           const activityDate = dateBucket(
             localDateAt(new Date(event.occurredAt), guild.analyticsTimezone),
           );
@@ -240,6 +283,16 @@ export class PrismaBotIngestionRepository implements BotIngestionRepository {
             },
             update: { joinCount: { increment: 1 } },
           });
+          if (event.roleNames?.length) {
+            await transaction.discordGuildRole.createMany({
+              data: event.roleNames.map((role) => ({
+                guildId: event.guildId,
+                roleId: role.id,
+                name: role.name,
+              })),
+              skipDuplicates: true,
+            });
+          }
           await transaction.guildMemberSnapshot.upsert({
             where: {
               guildId_discordUserId: {
@@ -262,6 +315,16 @@ export class PrismaBotIngestionRepository implements BotIngestionRepository {
             },
           });
         } else {
+          if (event.roleNames?.length) {
+            await transaction.discordGuildRole.createMany({
+              data: event.roleNames.map((role) => ({
+                guildId: event.guildId,
+                roleId: role.id,
+                name: role.name,
+              })),
+              skipDuplicates: true,
+            });
+          }
           await transaction.guildMemberSnapshot.upsert({
             where: {
               guildId_discordUserId: {

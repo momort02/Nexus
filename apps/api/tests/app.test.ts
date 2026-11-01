@@ -66,6 +66,14 @@ const guildC: DiscordGuild = {
   icon: null,
 };
 
+const guildD: DiscordGuild = {
+  id: '55555555555555555',
+  name: 'Guild D',
+  owner: false,
+  permissions: '32',
+  icon: null,
+};
+
 const environment = {
   API_PORT: 3000,
   DATABASE_URL: 'postgresql://localhost:5432/nexus',
@@ -329,6 +337,7 @@ class MemoryBotIngestionRepository implements BotIngestionRepository {
 
 class MemoryAnalyticsRepository implements AnalyticsRepository {
   readonly timezones = new Map<string, string>([[guildA.id, 'UTC']]);
+  readonly channelNameFilters: string[] = [];
 
   async getTimezone(guildId: string): Promise<string | null> {
     return this.timezones.get(guildId) ?? null;
@@ -366,12 +375,16 @@ class MemoryAnalyticsRepository implements AnalyticsRepository {
     return 0;
   }
 
-  async listChannels(): Promise<{ channels: []; total: number }> {
+  async listChannels(
+    input: Parameters<AnalyticsRepository['listChannels']>[0],
+  ): Promise<{ channels: []; total: number }> {
+    if (input.channelName) this.channelNameFilters.push(input.channelName);
     return { channels: [], total: 0 };
   }
 }
 
 class MemoryStaffModerationRepository implements StaffModerationRepository {
+  readonly discordRoles = [{ id: '44444444444444444', name: 'Modérateur' }];
   readonly memberSnapshots: Array<{
     discordUserId: string;
     displayName: string | null;
@@ -394,7 +407,14 @@ class MemoryStaffModerationRepository implements StaffModerationRepository {
 
   async listMembers() {
     return {
-      members: this.memberSnapshots,
+      members: this.memberSnapshots.map((member) => ({
+        ...member,
+        roles: member.roleIds.flatMap((id) => {
+          const role = this.discordRoles.find((entry) => entry.id === id);
+          return role ? [role] : [];
+        }),
+      })),
+      roles: this.discordRoles,
       total: this.memberSnapshots.length,
     };
   }
@@ -515,6 +535,7 @@ class MemoryStaffModerationRepository implements StaffModerationRepository {
 function createTestApp(
   repository = new MemoryAuthRepository(),
   publishGuildEvent?: (guildId: string) => void | Promise<void>,
+  discord: DiscordClient = createDiscordClient(),
 ) {
   const rbacRepository = new MemoryRbacRepository();
   const botIngestionRepository = new MemoryBotIngestionRepository();
@@ -528,7 +549,7 @@ function createTestApp(
       analyticsRepository,
       staffModerationRepository,
       botApiSecret: environment.BOT_API_SECRET,
-      discord: createDiscordClient(),
+      discord,
       environment,
       ...(publishGuildEvent ? { publishGuildEvent } : {}),
     }),
@@ -611,7 +632,9 @@ async function signIn(
   const sessionCookie = sessionCookieHeader?.split(';', 1)[0];
 
   expect(callback.status).toBe(302);
-  expect(callback.headers.location).toBe(environment.APP_ORIGIN);
+  expect(callback.headers.location).toBe(
+    new URL('/dashboard/', environment.APP_ORIGIN).toString(),
+  );
   expect(sessionCookieHeader).toMatch(/HttpOnly/i);
   expect(sessionCookieHeader).toMatch(/SameSite=Lax/i);
   if (!sessionCookie) {
@@ -704,6 +727,36 @@ describe('Discord OAuth and guild isolation', () => {
       .set('Cookie', cookie);
     expect(otherGuild.status).toBe(403);
     expect(otherGuild.body.error.code).toBe('guild_access_denied');
+  });
+
+  it('refreshes available guilds from Discord on each request', async () => {
+    const discord = createDiscordClient();
+    const currentGuilds = [guildA, guildB, guildC];
+    vi.spyOn(discord, 'getGuilds').mockImplementation(async () => [
+      ...currentGuilds,
+    ]);
+    const { app } = createTestApp(
+      new MemoryAuthRepository(),
+      undefined,
+      discord,
+    );
+    const { cookie } = await signIn(app);
+    const path = '/api/v1/guilds/available';
+
+    const beforeInstall = await request(app).get(path).set('Cookie', cookie);
+    expect(beforeInstall.body.guilds).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: guildD.id })]),
+    );
+
+    currentGuilds.push(guildD);
+    const afterInstall = await request(app).get(path).set('Cookie', cookie);
+    expect(afterInstall.status).toBe(200);
+    expect(afterInstall.body.guilds).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: guildD.id, canCreateNexus: true }),
+      ]),
+    );
+    expect(discord.getGuilds).toHaveBeenCalledTimes(2);
   });
 
   it('requires a same-origin POST to log out and deletes the session', async () => {
@@ -877,7 +930,7 @@ describe('staff and moderation authorization', () => {
       discordUserId: '66666666666666666',
       displayName: 'Amaury',
       joinedAt: new Date('2026-10-01T10:00:00.000Z'),
-      roleIds: [],
+      roleIds: ['44444444444444444'],
       syncedAt: new Date('2026-10-31T12:00:00.000Z'),
     });
 
@@ -891,8 +944,10 @@ describe('staff and moderation authorization', () => {
         expect.objectContaining({
           discordUserId: '66666666666666666',
           displayName: 'Amaury',
+          roles: [{ id: '44444444444444444', name: 'Modérateur' }],
         }),
       ],
+      roles: [{ id: '44444444444444444', name: 'Modérateur' }],
       total: 1,
       page: 1,
       pageSize: 10,
@@ -1332,6 +1387,28 @@ describe('Discord bot event ingestion', () => {
     expect(botIngestionRepository.events.size).toBe(1);
   });
 
+  it('accepts signed channel and role metadata snapshots', async () => {
+    const { app, botIngestionRepository } = createTestApp();
+    const event: DiscordBotEvent = {
+      type: 'guild.metadata',
+      eventId: 'd'.repeat(64),
+      guildId: guildA.id,
+      channels: [{ id: '55555555555555555', name: 'général' }],
+      roles: [{ id: '66666666666666666', name: 'Modérateur' }],
+      occurredAt: '2026-10-31T10:01:00.000Z',
+    };
+    const body = JSON.stringify({ events: [event] });
+    const path = '/api/internal/v1/discord/events';
+    const response = await request(app)
+      .post(path)
+      .set(createBotSignature('POST', path, body))
+      .set('Content-Type', 'application/json')
+      .send(body);
+
+    expect(response.status).toBe(202);
+    expect(botIngestionRepository.events.get(event.eventId)).toEqual(event);
+  });
+
   it('rejects invalid signatures and ignores events for unregistered guilds', async () => {
     const { app } = createTestApp();
     const invalidSignature = await request(app)
@@ -1410,6 +1487,16 @@ describe('Server analytics authorization', () => {
       pages: 0,
       timezone: 'UTC',
     });
+    const namedChannelPage = await request(app)
+      .get(`/api/v1/guilds/${guildA.id}/analytics/channels`)
+      .query({
+        from: '2026-10-25',
+        to: '2026-10-31',
+        channelName: 'général',
+      })
+      .set('Cookie', cookie);
+    expect(namedChannelPage.status).toBe(200);
+    expect(analyticsRepository.channelNameFilters).toContain('général');
 
     const csv = await request(app)
       .get(`/api/v1/guilds/${guildA.id}/analytics/export.csv`)
@@ -1418,6 +1505,7 @@ describe('Server analytics authorization', () => {
     expect(csv.status).toBe(200);
     expect(csv.headers['content-type']).toContain('text/csv');
     expect(csv.text).toContain('"activeMembers"');
+    expect(csv.text).toContain('"channelName"');
 
     const crossGuild = await request(app)
       .get(`/api/v1/guilds/${guildB.id}/analytics/overview`)

@@ -88,6 +88,12 @@ export function createAuthRouter({
     standardHeaders: 'draft-8',
     legacyHeaders: false,
   });
+  const guildRefreshLimit = rateLimit({
+    windowMs: 5 * 60 * 1000,
+    limit: 10,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+  });
 
   router.get('/auth/discord', sensitiveLimit, (_request, response) => {
     const state = randomBytes(32).toString('hex');
@@ -163,7 +169,10 @@ export function createAuthRouter({
       });
 
       setSessionCookie(response, sessionToken, environment);
-      response.redirect(302, environment.APP_ORIGIN);
+      response.redirect(
+        302,
+        new URL('/dashboard/', environment.APP_ORIGIN).toString(),
+      );
     },
   );
 
@@ -196,6 +205,7 @@ export function createAuthRouter({
 
   router.get(
     '/guilds/available',
+    guildRefreshLimit,
     requireSession,
     async (_request, response) => {
       const session = response.locals.authSession;

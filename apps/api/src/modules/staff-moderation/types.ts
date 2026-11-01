@@ -19,8 +19,10 @@ export interface StaffModerationRepository {
       displayName: string | null;
       joinedAt: Date | null;
       roleIds: string[];
+      roles: Array<{ id: string; name: string }>;
       syncedAt: Date;
     }>;
+    roles: Array<{ id: string; name: string }>;
     total: number;
   }>;
   listStaff(guildId: string): Promise<unknown[]>;

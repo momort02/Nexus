@@ -30,6 +30,7 @@ export interface AnalyticsSummary {
 
 export interface AnalyticsChannel {
   channelId: string;
+  name: string | null;
   messageCount: number;
 }
 
@@ -56,5 +57,6 @@ export interface AnalyticsRepository {
     page: number;
     pageSize: number;
     channelId?: string;
+    channelName?: string;
   }): Promise<{ channels: AnalyticsChannel[]; total: number }>;
 }

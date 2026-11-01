@@ -67,7 +67,7 @@ export class PrismaStaffModerationRepository implements StaffModerationRepositor
         : {}),
       ...(input.roleId ? { roleIds: { array_contains: [input.roleId] } } : {}),
     };
-    const [members, total] = await this.prisma.$transaction([
+    const [members, total, roles] = await this.prisma.$transaction([
       this.prisma.guildMemberSnapshot.findMany({
         where,
         select: {
@@ -82,7 +82,13 @@ export class PrismaStaffModerationRepository implements StaffModerationRepositor
         take: input.pageSize,
       }),
       this.prisma.guildMemberSnapshot.count({ where }),
+      this.prisma.discordGuildRole.findMany({
+        where: { guildId: input.guildId },
+        select: { roleId: true, name: true },
+        orderBy: { name: 'asc' },
+      }),
     ]);
+    const roleNames = new Map(roles.map((role) => [role.roleId, role.name]));
 
     return {
       members: members.map((member) => ({
@@ -92,7 +98,15 @@ export class PrismaStaffModerationRepository implements StaffModerationRepositor
               (roleId): roleId is string => typeof roleId === 'string',
             )
           : [],
+        roles: Array.isArray(member.roleIds)
+          ? member.roleIds.flatMap((roleId) => {
+              if (typeof roleId !== 'string') return [];
+              const name = roleNames.get(roleId);
+              return name ? [{ id: roleId, name }] : [];
+            })
+          : [],
       })),
+      roles: roles.map(({ roleId, name }) => ({ id: roleId, name })),
       total,
     };
   }

@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Politique de confidentialité du service Nexus."
+    />
+    <title>Politique de confidentialité — Nexus</title>
+    <link rel="icon" type="image/svg+xml" href="/src/logo-mark.svg" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body class="legal-body">
+    <main class="legal-page">
+      <header class="legal-header">
+        <a class="legal-brand" href="/" aria-label="Nexus, accueil">NEXUS</a>
+        <nav aria-label="Documents juridiques">
+          <a href="/terms.html">Conditions</a>
+          <a aria-current="page" href="/privacy.html">Confidentialité</a>
+        </nav>
+      </header>
+
+      <article class="legal-document">
+        <p class="eyebrow">Nexus · Document de travail</p>
+        <h1>Politique de confidentialité</h1>
+        <p class="legal-updated">Version du 1er novembre 2026</p>
+        <aside class="legal-notice" aria-label="À compléter avant publication">
+          <strong>À compléter avant publication :</strong> identité et
+          coordonnées de l’exploitant, hébergeurs, lieux de traitement,
+          fondements juridiques et durées de conservation des données hors
+          sessions. Ce texte doit être vérifié avant d’être présenté comme une
+          politique définitive.
+        </aside>
+
+        <section>
+          <h2>1. Responsable et contact</h2>
+          <p>
+            Nexus est exploité par
+            <strong>[nom ou entité juridique à compléter]</strong>. Pour toute
+            question relative aux données personnelles ou pour exercer un droit,
+            contactez <strong>[adresse de contact à compléter]</strong>.
+          </p>
+        </section>
+
+        <section>
+          <h2>2. Données traitées</h2>
+          <ul>
+            <li>
+              <strong>Connexion Discord :</strong> identifiant Discord, nom
+              d’utilisateur, nom global et avatar lorsque fournis par Discord ;
+              identifiants des serveurs nécessaires à la sélection des espaces
+              accessibles. Nexus demande les accès OAuth2
+              <code>identify</code> et <code>guilds</code>.
+            </li>
+            <li>
+              <strong>Sessions :</strong> un identifiant de session haché,
+              conservé pour une durée applicative de sept jours, ainsi qu’un
+              jeton d’accès Discord temporaire chiffré lorsqu’il est nécessaire
+              pour actualiser les serveurs. Aucun jeton de renouvellement
+              Discord n’est demandé ou stocké. Le navigateur reçoit un cookie de
+              session HttpOnly et SameSite=Lax, configuré Secure en production.
+            </li>
+            <li>
+              <strong>Statistiques Discord :</strong> compteurs de messages
+              agrégés par serveur, salon et période, événements d’arrivée et de
+              départ, et activité quotidienne représentée par un pseudonyme
+              calculé à partir d’un identifiant Discord. Les instantanés de
+              membres peuvent inclure leur identifiant, nom affiché, rôles
+              observés et date d’arrivée lorsqu’elle est disponible. Les noms
+              des salons et rôles Discord sont également synchronisés pour
+              présenter ces données dans l’interface.
+            </li>
+            <li>
+              <strong>Fonctions de staff et de modération :</strong> tâches et
+              commentaires, signalements, réponses aux candidatures, dossiers de
+              modération et contestations, journaux d’audit et notifications.
+              Ces éléments peuvent contenir du texte saisi par les utilisateurs
+              et des identifiants Discord.
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>3. Contenu des messages</h2>
+          <p>
+            Le bot Nexus ne demande pas l’intent Discord « Message Content ». Le
+            contenu des conversations, le texte des commandes, les noms de
+            réactions et les identifiants de messages ne sont pas collectés pour
+            les statistiques. Les compteurs et pseudonymes d’activité décrits
+            ci-dessus sont conservés sans le contenu des messages.
+          </p>
+          <p>
+            Les textes volontairement saisis dans les commentaires,
+            signalements, candidatures, dossiers ou contestations sont distincts
+            du contenu des conversations et sont traités pour fournir ces
+            fonctions.
+          </p>
+        </section>
+
+        <section>
+          <h2>4. Finalités</h2>
+          <p>
+            Les données sont utilisées pour authentifier les utilisateurs,
+            afficher les serveurs auxquels ils ont accès, sécuriser les
+            sessions, appliquer les permissions par serveur, produire des
+            statistiques agrégées, fournir les outils de staff et de modération,
+            prévenir les doublons d’événements et assurer la sécurité et le
+            fonctionnement du service.
+          </p>
+          <p>
+            Les fondements juridiques applicables à chaque finalité doivent être
+            déterminés par l’exploitant et précisés avant publication.
+          </p>
+        </section>
+
+        <section>
+          <h2>5. Destinataires et services tiers</h2>
+          <p>
+            Les données ne sont accessibles qu’aux personnes et services qui en
+            ont besoin pour fournir Nexus, ainsi qu’aux utilisateurs autorisés
+            du serveur concerné selon leurs permissions. Discord traite les
+            données nécessaires à son propre service et à l’authentification.
+            Les hébergeurs, fournisseurs de base de données et autres
+            prestataires éventuels doivent être identifiés ici avant la mise en
+            production :
+            <strong>[prestataires et lieux de traitement à compléter]</strong>.
+          </p>
+          <p>
+            Nexus ne vend pas les données personnelles. Les modalités de
+            transferts éventuels hors de votre pays doivent être précisées par
+            l’exploitant en fonction de son infrastructure.
+          </p>
+        </section>
+
+        <section>
+          <h2>6. Conservation et suppression</h2>
+          <p>
+            La durée de session applicative est de sept jours ; le jeton Discord
+            temporaire est supprimé de la session lorsqu’il expire. Le code
+            actuel ne définit pas encore de calendrier global de conservation
+            pour les statistiques, instantanés de membres, données de staff,
+            signalements, candidatures, dossiers de modération et journaux
+            d’audit, ni de fonction de suppression générale accessible aux
+            utilisateurs.
+          </p>
+          <p>
+            Ces durées et procédures doivent être fixées et mises en œuvre par
+            l’exploitant avant la mise en production. Pour demander l’accès, la
+            rectification, l’effacement ou l’export de données, écrivez à
+            <strong>[adresse de contact à compléter]</strong>. Les droits
+            disponibles dépendent de la loi applicable et certaines données
+            peuvent devoir être conservées pour des raisons légales ou de
+            sécurité.
+          </p>
+        </section>
+
+        <section>
+          <h2>7. Sécurité</h2>
+          <p>
+            Nexus applique notamment des contrôles d’accès par serveur et par
+            permission côté API, limite les données OAuth demandées, chiffre le
+            jeton d’accès Discord temporaire et protège les sessions par cookie.
+            Aucun système ne pouvant garantir une sécurité absolue, contactez
+            l’exploitant à <strong>[adresse de contact à compléter]</strong> si
+            vous suspectez un incident.
+          </p>
+        </section>
+
+        <section>
+          <h2>8. Modifications</h2>
+          <p>
+            Cette politique peut être mise à jour pour refléter l’évolution du
+            service ou des obligations applicables. La date de version indiquée
+            en haut de page sera modifiée en conséquence.
+          </p>
+        </section>
+      </article>
+
+      <footer class="legal-footer">
+        <a href="/">Retour à Nexus</a>
+        <a href="/terms.html">Conditions d’utilisation</a>
+      </footer>
+    </main>
+  </body>
+</html>

@@ -3,12 +3,15 @@
 Le schéma Prisma détaillé sera construit par Copilot à partir de ces entités. Toutes les tables propres à un serveur doivent porter une relation ou une clé `guildId` et être interrogées dans le contexte du serveur autorisé.
 
 ## Entités
+
 - User : compte Nexus.
 - OAuthAccount : fournisseur, identifiant externe et tokens chiffrés si leur conservation est nécessaire.
 - Guild : serveur Discord connecté.
 - GuildMembership : association utilisateur/espace Nexus.
 - GuildSettings : paramètres et préférences.
 - GuildMember : membre Discord synchronisé.
+- DiscordGuildChannel et DiscordGuildRole : noms Discord synchronisés,
+  associés à leur identifiant et isolés par serveur.
 - NexusRole : rôle interne d'un serveur.
 - Permission : catalogue global de permissions.
 - RolePermission : association rôle/permission.
@@ -31,6 +34,7 @@ Le schéma Prisma détaillé sera construit par Copilot à partir de ces entité
 - JobExecution : état des tâches différées si nécessaire.
 
 ## Contraintes
+
 - Utiliser les IDs Discord comme chaînes (`String`), jamais comme nombres JavaScript.
 - Ajouter les index sur `guildId`, dates, statuts et colonnes de recherche.
 - Ajouter des contraintes d'unicité composites, par exemple `[guildId, discordUserId]`.

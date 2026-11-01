@@ -199,11 +199,28 @@ export class PrismaAnalyticsRepository implements AnalyticsRepository {
     page: number;
     pageSize: number;
     channelId?: string;
+    channelName?: string;
   }): Promise<{ channels: AnalyticsChannel[]; total: number }> {
+    const namedChannels = input.channelName
+      ? await this.prisma.discordGuildChannel.findMany({
+          where: {
+            guildId: input.guildId,
+            name: { contains: input.channelName, mode: 'insensitive' },
+          },
+          select: { channelId: true },
+        })
+      : null;
+    if (namedChannels && namedChannels.length === 0) {
+      return { channels: [], total: 0 };
+    }
+
     const where: Prisma.DailyMessageStatisticWhereInput = {
       guildId: input.guildId,
       activityDate: { gte: input.from, lt: input.to },
       ...(input.channelId ? { channelId: input.channelId } : {}),
+      ...(namedChannels
+        ? { channelId: { in: namedChannels.map(({ channelId }) => channelId) } }
+        : {}),
     };
     const [rows, total] = await Promise.all([
       this.prisma.dailyMessageStatistic.groupBy({
@@ -219,10 +236,21 @@ export class PrismaAnalyticsRepository implements AnalyticsRepository {
         where,
       }),
     ]);
+    const names = await this.prisma.discordGuildChannel.findMany({
+      where: {
+        guildId: input.guildId,
+        channelId: { in: rows.map((row) => row.channelId) },
+      },
+      select: { channelId: true, name: true },
+    });
+    const channelNames = new Map(
+      names.map(({ channelId, name }) => [channelId, name]),
+    );
 
     return {
       channels: rows.map((row) => ({
         channelId: row.channelId,
+        name: channelNames.get(row.channelId) ?? null,
         messageCount: sum(row._sum.messageCount),
       })),
       total: total.length,

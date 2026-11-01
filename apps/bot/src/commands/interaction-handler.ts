@@ -5,7 +5,7 @@ import {
 } from 'discord.js';
 import type { ApiEventTransport } from '../transport/api-event-transport.js';
 import { getBotHealth } from '../health.js';
-import { memberSnapshotEvent } from '../events/handlers.js';
+import { guildMetadataEvent, memberSnapshotEvent } from '../events/handlers.js';
 
 interface InteractionHandlerOptions {
   client: Client;
@@ -51,6 +51,9 @@ export async function handleSlashCommand(
   await interaction.deferReply({ ephemeral: true });
 
   try {
+    if (!transport.enqueue(guildMetadataEvent(interaction.guild))) {
+      throw new Error('The local event queue is full.');
+    }
     let after: string | undefined;
     let processed = 0;
     while (true) {

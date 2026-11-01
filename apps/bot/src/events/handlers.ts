@@ -6,8 +6,10 @@ import type {
   DiscordMemberLeftEvent,
   DiscordMessageCountEvent,
   DiscordVoiceSessionEvent,
+  DiscordGuildMetadataEvent,
 } from '@nexus/shared';
 import type {
+  Guild,
   GuildMember,
   Message,
   MessageReaction,
@@ -50,10 +52,32 @@ function activityEvent(
 }
 
 function roleIds(member: GuildMember): string[] {
+  return roleNames(member).map(({ id }) => id);
+}
+
+function roleNames(member: GuildMember): Array<{ id: string; name: string }> {
   return member.roles.cache
     .filter((role) => role.id !== member.guild.id)
-    .map((role) => role.id)
-    .sort();
+    .map(({ id, name }) => ({ id, name }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+export function guildMetadataEvent(
+  guild: Guild,
+  occurredAt = new Date(),
+): DiscordGuildMetadataEvent {
+  return {
+    type: 'guild.metadata',
+    eventId: hashEventId(
+      `${guild.id}:guild.metadata:${occurredAt.toISOString()}`,
+    ),
+    guildId: guild.id,
+    channels: guild.channels.cache.map(({ id, name }) => ({ id, name })),
+    roles: guild.roles.cache
+      .filter((role) => role.id !== guild.id)
+      .map(({ id, name }) => ({ id, name })),
+    occurredAt: occurredAt.toISOString(),
+  };
 }
 
 export function memberJoinedEvent(
@@ -71,6 +95,7 @@ export function memberJoinedEvent(
     displayName: member.displayName,
     joinedAt,
     roleIds: roleIds(member),
+    roleNames: roleNames(member),
     occurredAt: occurredAt.toISOString(),
   };
 }
@@ -106,6 +131,7 @@ export function memberSnapshotEvent(
     displayName: member.displayName,
     joinedAt,
     roleIds: roleIds(member),
+    roleNames: roleNames(member),
     occurredAt: occurredAt.toISOString(),
   };
 }
@@ -114,7 +140,14 @@ export function messageCountEvent(
   message: {
     id: string;
     guildId: string | null;
-    guild: { id: string } | null;
+    guild: {
+      id: string;
+      channels?: {
+        cache: {
+          get(channelId: string): { name: string } | undefined;
+        };
+      };
+    } | null;
     channelId: string | null;
     author: { bot: boolean; id: string };
     webhookId?: string | null;
@@ -148,6 +181,12 @@ export function messageCountEvent(
     eventId: hashEventId(`message:${message.id}`),
     guildId: message.guildId,
     channelId: message.channelId,
+    ...(message.guild.channels?.cache.get(message.channelId)?.name
+      ? {
+          channelName: message.guild.channels.cache.get(message.channelId)
+            ?.name,
+        }
+      : {}),
     memberKey: memberKey(message.guildId, message.author.id, analyticsKey),
     bucketStart: bucketStart.toISOString(),
     occurredAt: occurredAt.toISOString(),
@@ -160,6 +199,9 @@ export function createLifecycleHandlers(
 ) {
   const voiceSessionStarts = new Map<string, Date>();
   return {
+    guildMetadata(guild: Guild): void {
+      emit(guildMetadataEvent(guild));
+    },
     memberAdd(member: GuildMember, occurredAt?: Date): void {
       emit(memberJoinedEvent(member, occurredAt));
     },

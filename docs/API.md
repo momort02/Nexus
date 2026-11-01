@@ -80,12 +80,17 @@ Préfixe : `/api/v1`.
 - `PUT /guilds/:guildId/analytics/timezone` — permission `settings.manage`.
 - `GET /guilds/:guildId/members?page=&pageSize=&search=&roleId=` — permission
   `members.view`, pagination (25 par défaut, 100 maximum), recherche sur
-  le pseudo Discord ou l’identifiant et filtre facultatif par rôle Discord. Les
+  le pseudo Discord ou l’identifiant et filtre facultatif par rôle Discord.
+  Les réponses incluent les noms des rôles synchronisés depuis Discord, ainsi
+  que la liste des rôles disponibles pour le filtre. Les
   résultats ne contiennent que les instantanés connus du bot ; le pseudo affiché
   est le surnom du serveur, ou le nom global/nom d’utilisateur Discord si aucun
   surnom n’est défini. Les anciennes fiches restent sans pseudo jusqu’à la
   prochaine synchronisation du bot (`/nexus-sync`). Les modifications du pseudo
   et des rôles observées par le bot actualisent l’instantané.
+- `GET /guilds/:guildId/analytics/channels?channelName=` — permission
+  `analytics.view` ; inclut le nom Discord du salon et accepte un filtre de nom
+  insensible à la casse. Les noms et identifiants sont synchronisés par le bot.
 
 Les connexions Socket.IO utilisent le cookie de session Nexus. Le client doit
 demander `guild:subscribe` avec l’identifiant de la guild ; l’API vérifie à

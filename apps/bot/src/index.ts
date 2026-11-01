@@ -48,6 +48,28 @@ export function createBot() {
   client.on(Events.GuildMemberUpdate, (_oldMember, newMember) => {
     lifecycle.memberUpdate(newMember);
   });
+  client.on(Events.GuildCreate, lifecycle.guildMetadata);
+  client.on(Events.ChannelCreate, (channel) => {
+    if (channel.isDMBased()) return;
+    lifecycle.guildMetadata(channel.guild);
+  });
+  client.on(Events.ChannelUpdate, (_oldChannel, newChannel) => {
+    if (newChannel.isDMBased()) return;
+    lifecycle.guildMetadata(newChannel.guild);
+  });
+  client.on(Events.ChannelDelete, (channel) => {
+    if (channel.isDMBased()) return;
+    lifecycle.guildMetadata(channel.guild);
+  });
+  client.on(Events.GuildRoleCreate, (role) => {
+    lifecycle.guildMetadata(role.guild);
+  });
+  client.on(Events.GuildRoleUpdate, (_oldRole, newRole) => {
+    lifecycle.guildMetadata(newRole.guild);
+  });
+  client.on(Events.GuildRoleDelete, (role) => {
+    lifecycle.guildMetadata(role.guild);
+  });
   client.on(Events.MessageCreate, lifecycle.messageCreate);
   client.on(Events.MessageReactionAdd, (reaction, user) => {
     lifecycle.reactionAdd(reaction, user);
@@ -99,6 +121,9 @@ export function createBot() {
         }),
       );
     });
+    for (const guild of readyClient.guilds.cache.values()) {
+      lifecycle.guildMetadata(guild);
+    }
   });
 
   client.on(Events.Error, (error) => {

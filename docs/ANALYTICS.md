@@ -58,6 +58,9 @@ volumes de messages agrégés par serveur, salon et période ; `GuildDailyStatis
 contient les volumes d'arrivées et de départs. Les exports CSV contiennent les
 séries journalières agrégées et les volumes par salon, ainsi que la période et
 le fuseau ; l'accès exige `analytics.export`.
+Les noms Discord des salons sont synchronisés dans `DiscordGuildChannel` par le
+bot et sont renvoyés avec les volumes agrégés. Le filtre accepte `channelName`
+ou `channelId`.
 
 ## Endpoints et autorisations
 
@@ -65,7 +68,8 @@ le fuseau ; l'accès exige `analytics.export`.
   `analytics.view`, série journalière, totaux, DAU/WAU/MAU, comparaison
   facultative.
 - `GET /api/v1/guilds/:guildId/analytics/channels` — permission
-  `analytics.view`, pagination `page`/`pageSize` et filtre `channelId`.
+  `analytics.view`, pagination `page`/`pageSize` et filtre par nom
+  (`channelName`) ou identifiant (`channelId`).
 - `GET /api/v1/guilds/:guildId/analytics/export.csv` — permission
   `analytics.export`, période maximale de 366 jours et limite d'export de
   10 000 salons.
