@@ -22,6 +22,13 @@ Copiez `.env.example` vers `.env`, puis renseignez les valeurs locales pour
 Renseignez `DISCORD_BOT_TOKEN` uniquement si vous lancez le bot. Ne partagez et
 ne commitez jamais le fichier `.env`.
 
+## Déploiement en production
+
+Pour déployer sur une VM Ubuntu avec Docker Compose, PostgreSQL privé et HTTPS
+automatique via Caddy, suivez [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md). Le
+dashboard et l'API seront servis sous le même domaine ; le port 80 doit aussi
+être accessible pour l'émission et le renouvellement des certificats TLS.
+
 Pour l'authentification, configurez aussi `DATABASE_URL`, `DISCORD_CLIENT_ID`,
 `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI`, `APP_ORIGIN` et
 `OAUTH_ENCRYPTION_KEY`. Enregistrez exactement `DISCORD_REDIRECT_URI` comme URL
